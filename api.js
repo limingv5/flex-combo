@@ -209,6 +209,9 @@ FlexCombo.prototype = {
                 {content:content}, reqOpt,
                 merge.recursive(true, self.param[engine.path] || {}, self.query),
                 function (e, result) {
+                  if (e) {
+                    self.trace.error(absPath, engine.path + " Engine Error");
+                  }
                   callback(e, result);
                 }
               );
@@ -222,6 +225,9 @@ FlexCombo.prototype = {
                 absPath, reqOpt,
                 merge.recursive(true, self.param[engine.path] || {}, self.query),
                 function (e, result) {
+                  if (e) {
+                    self.trace.error(absPath, engine.path + " Engine Error");
+                  }
                   callback(e, result);
                 }
               );
