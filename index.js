@@ -32,7 +32,7 @@ function init_config(dir, key, except) {
 
     if (!fsLib.existsSync(confDir)) {
       mkdirp.sync(confDir);
-      fsLib.chmod(confDir, 0777);
+      fsLib.chmod(confDir, "0777");
     }
 
     if (fsLib.existsSync(confFile)) {
@@ -55,7 +55,7 @@ function init_config(dir, key, except) {
         });
 
         fsLib.writeFileSync(confFile, JSON.stringify(userParam, null, 2), {encoding: "utf-8"});
-        fsLib.chmod(confFile, 0777);
+        fsLib.chmod(confFile, "0777");
       }
     }
 
