@@ -3,11 +3,8 @@
   "version": "1.0.0",
   "description": "A combo tool designed for web front-end developer, which support various kinds of combo format by modify configuration(eg. yahoo combo).",
   "main": "index.js",
-  "bin": {
-    "flex-combo": "./bin/flex-combo"
-  },
   "dependencies": {
-    "commander": "~2.5.0",
+    "async": "~1.5.2",
     "dac": "~0.8.3",
     "fetch-agent": "~0.4.1",
     "fs-extra": "~0.26.7",

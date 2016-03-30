@@ -1,12 +1,26 @@
 "use strict";
 
 const pathLib = require("path");
+const urlLib  = require("url");
 const fsLib   = require("fs-extra");
 const merge   = require("merge");
+const async   = require("async");
 const Stack   = require("plug-trace").stack;
+
+// 默认注册编译引擎
+let Engines = new Map();
 
 class FlexCombo {
   constructor(priority, confFile) {
+    // URL分析结果
+    this.parseDetail = {};
+
+    // 动态注册引擎
+    this.engines = new Map();
+
+    // trace信息
+    this.trace = null;
+
     // 配置相关
     this.priority = priority || {}; // 代码显示注入的配置项,优先级最高
     this.confFile = confFile;       // 配置文件地址
@@ -48,29 +62,178 @@ class FlexCombo {
     return merge.recursive({}, require("./lib/param"), confJSON, this.priority);
   }
 
+  addEngine(rule, engine, field) {
+    if (!Engines.has(engine)) {
+      Engines.set(engine, {
+        rule: rule,
+        field: field
+      });
+    }
+  }
+
+  addCustomEngine(rule, engine, field) {
+    if (!this.engines.has(engine)) {
+      this.engines.set(engine, {
+        rule: rule,
+        field: field
+      });
+    }
+  }
+
+  /**
+   * url分析
+   */
   parser(_url) {
-    let url    = urlLib.parse(_url).path.replace(/[\\|\/]{1,}/g, '/');
+    _url = _url.replace(/([^\?])\?[^\?].*$/, "$1").replace(/[\?\,]{1,}$/, '');
+
+    let result  = urlLib.parse(_url);
+    result.path = result.path.replace(/[\\|\/]{1,}/g, '/');
+
+    this.parseDetail = {
+      protocol: result.protocol,
+      host: result.host,
+      path: result.path,
+      href: result.protocol + "//" + result.host + result.path,
+      list: []
+    };
+
+    let url    = this.parseDetail.path;
     let prefix = url.indexOf(this.param.servlet + '?');
 
     if (prefix != -1) {
       let base     = (url.slice(0, prefix) + '/').replace(/\/{1,}/g, '/');
       let file     = url.slice(prefix + this.param.servlet.length + 1);
       let filelist = file.split(this.param.seperator, 1000);
-      return filelist.map(function (i) {
+      this.parseDetail.list = filelist.map(function (i) {
         return urlLib.resolve(base, i);
       });
     }
     else {
-      return [url];
+      this.parseDetail.list = [url];
     }
   }
 
-  entry() {
-    console.log(this.param);
+  customEngineReset() {
+    this.engines.clear();
+    let tmp = [];
+
+    let engines = this.param.engine;
+    for (let regStr in engines) {
+      let filepath = engines[regStr].replace(/\.js$/, '');
+      let mod = pathLib.join(process.cwd(), filepath);
+      if (tmp.indexOf(mod) == -1 && fsLib.existsSync(mod + ".js")) {
+        tmp.push(mod);
+        this.addCustomEngine(regStr, require(mod), filepath);
+        delete require.cache[mod];
+      }
+    }
+  }
+
+  filteredUrl(_url) {
+    let filter = this.param.filter;
+    let regx, ori_url;
+
+    for (let k in filter) {
+      regx = new RegExp(k);
+      if (regx.test(_url)) {
+        ori_url = _url;
+        _url    = _url.replace(regx, filter[k]);
+        if (this.trace) {
+          this.trace.filter(regx, ori_url, _url);
+        }
+      }
+    }
+    return _url;
+  }
+
+  getRealPath(_url) {
+    var map = this.param.urls;
+    _url    = (/^\//.test(_url) ? '' : '/') + _url;
+
+    // urls中key对应的实际目录
+    var repPath = process.cwd(), revPath = _url, longestMatchNum = 0;
+    for (var k in map) {
+      if (_url.indexOf(k) == 0 && longestMatchNum < k.length) {
+        longestMatchNum = k.length;
+        repPath         = map[k];
+        revPath         = _url.slice(longestMatchNum);
+      }
+    }
+
+    return pathLib.normalize(pathLib.join(repPath, revPath));
+  }
+
+  engineHandler(file, cb) {
+    // for (let item of this.engines) {
+    //   if (new RegExp(item[1].rule).test(file)) {
+    //     console.log(file, item[1])
+    //   }
+    // }
+    // for (let item of Engines) {
+    //   if (new RegExp(item[1].rule).test(file)) {
+    //     console.log(file, item[1])
+    //   }
+    // }
+    cb(null, file);
+  }
+
+  staticHandler(file, cb) {
+    file = this.getRealPath(this.filteredUrl(file));
+    console.log(file)
+    fsLib.readFile(file, cb);
+  }
+
+  cacheHandler(file, cb) {
+    cb(null, file);
+  }
+
+  remoteHandler(file, cb) {
+    cb(null, file);
+  }
+
+  task(file, callback) {
+    let steps = [this.engineHandler, this.staticHandler, this.cacheHandler, this.remoteHandler];
+    let idx = 0;
+    let _data = null;
+
+    async.until(
+      function () {
+        return _data;
+      },
+      function (cb) {
+        steps[idx](file, function (e, data) {
+          _data = data;
+          cb(null, data);
+        });
+      },
+      function (err, data) {
+        callback(null, data);
+      }
+    );
+  }
+
+  entry(url) {
+    this.parser(url);
+    this.customEngineReset();
+
+    let self = this;
+    let Q = this.parseDetail.list.map(function (file) {
+      return function (callback) {
+        self.task(file, callback);
+      }
+    });
+    async.parallel(Q, function (e, result) {
+      console.log(result)
+    });
   }
 
   handle(req, res, next) {
-    this.trace  = new Stack("flex-combo");
+    var host = (req.connection.encrypted ? "https" : "http") + "://" + (req.hostname || req.host || req.headers.host);
+    // 不用.pathname的原因是由于??combo形式的url，parse方法解析有问题
+    var path = urlLib.parse(req.url).path;
+    this.entry(host + path);
+
+    this.trace = new Stack("flex-combo");
   }
 }
 
