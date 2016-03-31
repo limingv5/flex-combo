@@ -55,7 +55,7 @@ class FlexCombo {
       }
     }
     catch (e) {
-      this.trace.error("Can't require config file!", "IO");
+      this.trace && this.trace.error("Can't require config file!", "IO");
       confJSON = {};
     }
 
@@ -139,21 +139,19 @@ class FlexCombo {
       if (regx.test(_url)) {
         ori_url = _url;
         _url    = _url.replace(regx, filter[k]);
-        if (this.trace) {
-          this.trace.filter(regx, ori_url, _url);
-        }
+        this.trace && this.trace.filter(regx, ori_url, _url);
       }
     }
     return _url;
   }
 
   getRealPath(_url) {
-    var map = this.param.urls;
+    let map = this.param.urls;
     _url    = (/^\//.test(_url) ? '' : '/') + _url;
 
     // urls中key对应的实际目录
-    var repPath = process.cwd(), revPath = _url, longestMatchNum = 0;
-    for (var k in map) {
+    let repPath = process.cwd(), revPath = _url, longestMatchNum = 0;
+    for (let k in map) {
       if (_url.indexOf(k) == 0 && longestMatchNum < k.length) {
         longestMatchNum = k.length;
         repPath         = map[k];
@@ -165,18 +163,16 @@ class FlexCombo {
   }
 
   buildRequestOption(url) {
-    url = encodeURI(url);
-
-    var reqHostName = this.parseDetail.host;
-    var reqHostIP   = reqHostName;
+    let reqHostName = this.parseDetail.host;
+    let reqHostIP   = reqHostName;
     if (this.param.hosts && this.param.hosts[reqHostName]) {
       reqHostIP = this.param.hosts[reqHostName];
     }
 
-    var requestOption = {
+    let requestOption = {
       protocol: this.parseDetail.protocol,
       host: reqHostIP,
-      path: url,
+      path: encodeURI(url),
       method: "GET",
       rejectUnauthorized: false,
       headers: {
@@ -189,41 +185,37 @@ class FlexCombo {
     return requestOption;
   }
 
-  _matchEngine(filteredURL, absPath, reqOpt, isFirst, engine, info) {
-    var self = this;
+  _matchEngine(filteredURL, absPath, fakeReqOpt, isNotFirst, engine, info) {
+    let self = this;
 
     if (new RegExp(info.rule).test(filteredURL)) {
-      if (!isFirst) {
-        return (function() {
-          return function (content, callback) {
-            engine(
-              {content:content}, reqOpt,
-              self.param[info.field],
-              function (e, result) {
-                if (e) {
-                  self.trace && self.trace.error(absPath, info.field + " Engine Error");
-                }
-                callback(e, result);
+      if (isNotFirst) {
+        return function (content, callback) {
+          engine(
+            {content: content}, fakeReqOpt,
+            self.param[info.field],
+            function (e, result) {
+              if (e) {
+                self.trace && self.trace.error(absPath, info.field + " Engine Error");
               }
-            );
-          }
-        })(engine);
+              callback(e, result);
+            }
+          );
+        }
       }
       else {
-        return (function () {
-          return function (callback) {
-            engine(
-              absPath, reqOpt,
-              self.param[info.field],
-              function (e, result) {
-                if (e) {
-                  self.trace && self.trace.error(absPath, info.field + " Engine Error");
-                }
-                callback(e, result);
+        return function (callback) {
+          engine(
+            absPath, fakeReqOpt,
+            self.param[info.field],
+            function (e, result) {
+              if (e) {
+                self.trace && self.trace.error(absPath, info.field + " Engine Error");
               }
-            );
-          }
-        })(engine);
+              callback(e, result);
+            }
+          );
+        }
       }
     }
     else {
@@ -240,19 +232,18 @@ class FlexCombo {
 
     let filteredURL = this.filteredUrl(eUrl);
     let absPath     = this.getRealPath(filteredURL);
-    let reqOpt      = this.buildRequestOption(filteredURL);
+    let fakeReqOpt  = this.buildRequestOption(filteredURL);
 
     let Q    = [];
     let self = this;
     for (let item of this.engines) {
-      let engine = this._matchEngine(filteredURL, absPath, reqOpt, !Q.length, item[0], item[1]);
+      let engine = this._matchEngine(filteredURL, absPath, fakeReqOpt, Q.length, item[0], item[1]);
       if (engine) {
         Q.push(engine);
       }
     }
-
     for (let item of Engines) {
-      let engine = this._matchEngine(filteredURL, absPath, reqOpt, !Q.length, item[0], item[1]);
+      let engine = this._matchEngine(filteredURL, absPath, fakeReqOpt, Q.length, item[0], item[1]);
       if (engine) {
         Q.push(engine);
       }
@@ -343,9 +334,9 @@ class FlexCombo {
   }
 
   handle(req, res, next) {
-    var host = (req.connection.encrypted ? "https" : "http") + "://" + (req.hostname || req.host || req.headers.host);
+    let host = (req.connection.encrypted ? "https" : "http") + "://" + (req.hostname || req.host || req.headers.host);
     // 不用.pathname的原因是由于??combo形式的url，parse方法解析有问题
-    var path = urlLib.parse(req.url).path;
+    let path = urlLib.parse(req.url).path;
     this.entry(host + path);
 
     this.trace = new Stack("flex-combo");

@@ -15,4 +15,4 @@ inst.addEngine("\\.less\\.html$", DAC.lesspolymer, "dac/polymer");
 inst.addEngine("\\.jsx$", DAC.babel, "dac/babel");
 inst.addEngine("\\.js$", DAC.xmd, "dac/xmd");
 
-inst.entry("https://g.alicdn.com/1.1.1/??index.jsx,engines/xxx.jsx");
+inst.entry("https://g.alicdn.com/1.1.1/??index.js,.config/flex-combo.json");
