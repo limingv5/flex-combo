@@ -91,7 +91,8 @@ class FlexCombo {
 
     this.parseDetail = {
       protocol: result.protocol,
-      host: result.host,
+      host: result.hostname,
+      port: result.port || (result.protocol == "https:" ? 443 : 80),
       path: result.path,
       href: result.protocol + "//" + result.host + result.path,
       list: []
@@ -101,9 +102,9 @@ class FlexCombo {
     let prefix = url.indexOf(this.param.servlet + '?');
 
     if (prefix != -1) {
-      let base     = (url.slice(0, prefix) + '/').replace(/\/{1,}/g, '/');
-      let file     = url.slice(prefix + this.param.servlet.length + 1);
-      let filelist = file.split(this.param.seperator, 1000);
+      let base              = (url.slice(0, prefix) + '/').replace(/\/{1,}/g, '/');
+      let file              = url.slice(prefix + this.param.servlet.length + 1);
+      let filelist          = file.split(this.param.seperator, 1000);
       this.parseDetail.list = filelist.map(function (i) {
         return urlLib.resolve(base, i);
       });
@@ -120,7 +121,7 @@ class FlexCombo {
     let engines = this.param.engine;
     for (let regStr in engines) {
       let filepath = engines[regStr].replace(/\.js$/, '');
-      let mod = pathLib.join(process.cwd(), filepath);
+      let mod      = pathLib.join(process.cwd(), filepath);
       if (tmp.indexOf(mod) == -1 && fsLib.existsSync(mod + ".js")) {
         tmp.push(mod);
         this.addCustomEngine(regStr, require(mod), filepath);
@@ -163,24 +164,126 @@ class FlexCombo {
     return pathLib.normalize(pathLib.join(repPath, revPath));
   }
 
-  engineHandler(file, cb) {
-    // for (let item of this.engines) {
-    //   if (new RegExp(item[1].rule).test(file)) {
-    //     console.log(file, item[1])
-    //   }
-    // }
-    // for (let item of Engines) {
-    //   if (new RegExp(item[1].rule).test(file)) {
-    //     console.log(file, item[1])
-    //   }
-    // }
-    cb(null, file);
+  buildRequestOption(url) {
+    url = encodeURI(url);
+
+    var reqHostName = this.parseDetail.host;
+    var reqHostIP   = reqHostName;
+    if (this.param.hosts && this.param.hosts[reqHostName]) {
+      reqHostIP = this.param.hosts[reqHostName];
+    }
+
+    var requestOption = {
+      protocol: this.parseDetail.protocol,
+      host: reqHostIP,
+      path: url,
+      method: "GET",
+      rejectUnauthorized: false,
+      headers: {
+        "x-broker": "flex-combo",
+        host: reqHostName
+      }
+    };
+
+    requestOption.headers = merge.recursive(true, this.param.headers, requestOption.headers);
+    return requestOption;
+  }
+
+  _matchEngine(filteredURL, absPath, reqOpt, isFirst, engine, info) {
+    var self = this;
+
+    if (new RegExp(info.rule).test(filteredURL)) {
+      if (!isFirst) {
+        return (function() {
+          return function (content, callback) {
+            engine(
+              {content:content}, reqOpt,
+              self.param[info.field],
+              function (e, result) {
+                if (e) {
+                  self.trace && self.trace.error(absPath, info.field + " Engine Error");
+                }
+                callback(e, result);
+              }
+            );
+          }
+        })(engine);
+      }
+      else {
+        return (function () {
+          return function (callback) {
+            engine(
+              absPath, reqOpt,
+              self.param[info.field],
+              function (e, result) {
+                if (e) {
+                  self.trace && self.trace.error(absPath, info.field + " Engine Error");
+                }
+                callback(e, result);
+              }
+            );
+          }
+        })(engine);
+      }
+    }
+    else {
+      return false;
+    }
+  }
+
+  engineHandler(_url, cb) {
+    let eUrl = _url;
+    // .css找不到尝试找.less的特殊操作
+    if (!/\.less/.test(_url)) {
+      eUrl = _url.replace(/\.css$/, ".less.css");
+    }
+
+    let filteredURL = this.filteredUrl(eUrl);
+    let absPath     = this.getRealPath(filteredURL);
+    let reqOpt      = this.buildRequestOption(filteredURL);
+
+    let Q    = [];
+    let self = this;
+    for (let item of this.engines) {
+      let engine = this._matchEngine(filteredURL, absPath, reqOpt, !Q.length, item[0], item[1]);
+      if (engine) {
+        Q.push(engine);
+      }
+    }
+
+    for (let item of Engines) {
+      let engine = this._matchEngine(filteredURL, absPath, reqOpt, !Q.length, item[0], item[1]);
+      if (engine) {
+        Q.push(engine);
+      }
+    }
+
+    if (Q.length) {
+      async.waterfall(Q, function (e, result) {
+        if (e) {
+          cb(e);
+        }
+        else {
+          cb(e, result);
+          self.trace && self.trace.engine(filteredURL, absPath);
+        }
+      });
+    }
+    else {
+      cb({msg: "Engine Pass!"});
+    }
   }
 
   staticHandler(file, cb) {
     file = this.getRealPath(this.filteredUrl(file));
-    console.log(file)
-    fsLib.readFile(file, cb);
+    if (fsLib.existsSync(file)) {
+      fsLib.readFile(file, function (e, data) {
+        cb(null, data);
+      });
+    }
+    else {
+      cb({msg: "Static Not Found!"});
+    }
   }
 
   cacheHandler(file, cb) {
@@ -192,24 +295,36 @@ class FlexCombo {
   }
 
   task(file, callback) {
-    let steps = [this.engineHandler, this.staticHandler, this.cacheHandler, this.remoteHandler];
-    let idx = 0;
-    let _e = null;
-
-    async.until(
-      function () {
-        return !_e;
-      },
-      function (cb) {
-        steps[idx](file, function (e, data) {
-          _e = e;
-          cb(e, data);
+    let self = this;
+    self.engineHandler(file, function (e, data) {
+      if (e) {
+        self.staticHandler(file, function (e, data) {
+          if (e) {
+            self.cacheHandler(file, function (e, data) {
+              if (e) {
+                self.remoteHandler(file, function (e, data) {
+                  if (e) {
+                    callback({msg: "All failure!"});
+                  }
+                  else {
+                    callback(e, data);
+                  }
+                });
+              }
+              else {
+                callback(e, data);
+              }
+            });
+          }
+          else {
+            callback(e, data);
+          }
         });
-      },
-      function (e, data) {
+      }
+      else {
         callback(e, data);
       }
-    );
+    });
   }
 
   entry(url) {
@@ -217,7 +332,7 @@ class FlexCombo {
     this.customEngineReset();
 
     let self = this;
-    let Q = this.parseDetail.list.map(function (file) {
+    let Q    = this.parseDetail.list.map(function (file) {
       return function (callback) {
         self.task(file, callback);
       }

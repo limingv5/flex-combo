@@ -12,7 +12,7 @@ inst.addEngine("\\.tpl$|\\.tpl\\.js$|\\.html\\.js$", DAC.tpl, "dac/tpl");
 inst.addEngine("\\.less\\.js$", DAC.lessjs, "dac/tpl");
 inst.addEngine("\\.less$|\\.less\\.css$", DAC.less, "dac/less");
 inst.addEngine("\\.less\\.html$", DAC.lesspolymer, "dac/polymer");
-inst.addEngine("\\.js$", DAC.babel, "dac/babel");
+inst.addEngine("\\.jsx$", DAC.babel, "dac/babel");
 inst.addEngine("\\.js$", DAC.xmd, "dac/xmd");
 
-inst.entry("http://g.alicdn.com/1.1.1/??index.js,engines/xxx.js");
+inst.entry("https://g.alicdn.com/1.1.1/??index.jsx,engines/xxx.jsx");
