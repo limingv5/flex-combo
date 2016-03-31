@@ -194,20 +194,20 @@ class FlexCombo {
   task(file, callback) {
     let steps = [this.engineHandler, this.staticHandler, this.cacheHandler, this.remoteHandler];
     let idx = 0;
-    let _data = null;
+    let _e = null;
 
     async.until(
       function () {
-        return _data;
+        return !_e;
       },
       function (cb) {
         steps[idx](file, function (e, data) {
-          _data = data;
-          cb(null, data);
+          _e = e;
+          cb(e, data);
         });
       },
-      function (err, data) {
-        callback(null, data);
+      function (e, data) {
+        callback(e, data);
       }
     );
   }
