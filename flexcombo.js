@@ -6,6 +6,7 @@ const fsLib   = require("fs-extra");
 const merge   = require("merge");
 const async   = require("async");
 const Stack   = require("plug-trace").stack;
+const Helper  = require("./lib/util");
 
 // 默认注册编译引擎
 let Engines = new Map();
@@ -80,10 +81,26 @@ class FlexCombo {
     }
   }
 
+  resetCustomEngine() {
+    this.engines.clear();
+    let tmp = [];
+
+    let engines = this.param.engine;
+    for (let regStr in engines) {
+      let filepath = engines[regStr].replace(/\.js$/, '');
+      let mod      = pathLib.join(process.cwd(), filepath);
+      if (tmp.indexOf(mod) == -1 && fsLib.existsSync(mod + ".js")) {
+        tmp.push(mod);
+        this.addCustomEngine(regStr, require(mod), filepath);
+        delete require.cache[mod];
+      }
+    }
+  }
+
   /**
    * url分析
    */
-  parser(_url) {
+  parse(_url) {
     _url = _url.replace(/([^\?])\?[^\?].*$/, "$1").replace(/[\?\,]{1,}$/, '');
 
     let result  = urlLib.parse(_url);
@@ -114,23 +131,7 @@ class FlexCombo {
     }
   }
 
-  customEngineReset() {
-    this.engines.clear();
-    let tmp = [];
-
-    let engines = this.param.engine;
-    for (let regStr in engines) {
-      let filepath = engines[regStr].replace(/\.js$/, '');
-      let mod      = pathLib.join(process.cwd(), filepath);
-      if (tmp.indexOf(mod) == -1 && fsLib.existsSync(mod + ".js")) {
-        tmp.push(mod);
-        this.addCustomEngine(regStr, require(mod), filepath);
-        delete require.cache[mod];
-      }
-    }
-  }
-
-  filteredUrl(_url) {
+  getFilteredUrl(_url) {
     let filter = this.param.filter;
     let regx, ori_url;
 
@@ -160,6 +161,15 @@ class FlexCombo {
     }
 
     return pathLib.normalize(pathLib.join(repPath, revPath));
+  }
+
+  getCacheFilePath(_url) {
+    if (this.cacheDir) {
+      return pathLib.join(this.cacheDir, Helper.MD5(pathLib.join(this.parseDetail.host, _url)));
+    }
+    else {
+      return '';
+    }
   }
 
   buildRequestOption(url) {
@@ -193,7 +203,7 @@ class FlexCombo {
         return function (content, callback) {
           engine(
             {content: content}, fakeReqOpt,
-            self.param[info.field],
+            self.param[info.field] || {},
             function (e, result) {
               if (e) {
                 self.trace && self.trace.error(absPath, info.field + " Engine Error");
@@ -207,10 +217,13 @@ class FlexCombo {
         return function (callback) {
           engine(
             absPath, fakeReqOpt,
-            self.param[info.field],
+            self.param[info.field] || {},
             function (e, result) {
               if (e) {
                 self.trace && self.trace.error(absPath, info.field + " Engine Error");
+              }
+              else {
+                self.trace && self.trace.engine(filteredURL, absPath);
               }
               callback(e, result);
             }
@@ -230,7 +243,7 @@ class FlexCombo {
       eUrl = _url.replace(/\.css$/, ".less.css");
     }
 
-    let filteredURL = this.filteredUrl(eUrl);
+    let filteredURL = this.getFilteredUrl(eUrl);
     let absPath     = this.getRealPath(filteredURL);
     let fakeReqOpt  = this.buildRequestOption(filteredURL);
 
@@ -256,7 +269,6 @@ class FlexCombo {
         }
         else {
           cb(e, result);
-          self.trace && self.trace.engine(filteredURL, absPath);
         }
       });
     }
@@ -266,19 +278,30 @@ class FlexCombo {
   }
 
   staticHandler(file, cb) {
-    file = this.getRealPath(this.filteredUrl(file));
-    if (fsLib.existsSync(file)) {
-      fsLib.readFile(file, function (e, data) {
-        cb(null, data);
-      });
-    }
-    else {
-      cb({msg: "Static Not Found!"});
-    }
+    let filteredURL = this.getFilteredUrl(file);
+    let absPath = this.getRealPath(filteredURL);
+    let self = this;
+
+    fsLib.readFile(absPath, function (e, data) {
+      if (e) {
+        self.trace && self.trace.warn(absPath, "Not in Local");
+      }
+      else {
+        self.trace && self.trace.local(filteredURL, absPath);
+      }
+
+      cb(e, data);
+    });
   }
 
   cacheHandler(file, cb) {
-    cb(null, file);
+    let absPath = this.getCacheFilePath(file);
+    let self = this;
+
+    fsLib.readFile(absPath, function (e, data) {
+      self.trace && self.trace.cache(file, absPath);
+      cb(e, data);
+    });
   }
 
   remoteHandler(file, cb) {
@@ -287,49 +310,46 @@ class FlexCombo {
 
   task(file, callback) {
     let self = this;
-    self.engineHandler(file, function (e, data) {
-      if (e) {
-        self.staticHandler(file, function (e, data) {
-          if (e) {
-            self.cacheHandler(file, function (e, data) {
-              if (e) {
-                self.remoteHandler(file, function (e, data) {
-                  if (e) {
-                    callback({msg: "All failure!"});
-                  }
-                  else {
-                    callback(e, data);
-                  }
-                });
-              }
-              else {
-                callback(e, data);
-              }
-            });
-          }
-          else {
-            callback(e, data);
-          }
-        });
+    let step = 0;
+    let taskQueue = [this.engineHandler, this.staticHandler, this.cacheHandler, this.remoteHandler];
+
+    async.doUntil(
+      function (cb) {
+        if (step < taskQueue.length) {
+          taskQueue[step++].bind(self)(file, function (e, data) {
+            if (e) {
+              cb(null, null);
+            }
+            else {
+              cb(null, data);
+            }
+          });
+        }
+        else {
+          cb({msg: "Not Matched!"});
+        }
+      },
+      function (isFin) {
+        return isFin !== null;
+      },
+      function (err, data) {
+        callback(err, data);
       }
-      else {
-        callback(e, data);
-      }
-    });
+    );
   }
 
-  entry(url) {
-    this.parser(url);
-    this.customEngineReset();
+  entry(url, callback) {
+    this.parse(url);
+    this.resetCustomEngine();
 
     let self = this;
     let Q    = this.parseDetail.list.map(function (file) {
-      return function (callback) {
-        self.task(file, callback);
+      return function (cb) {
+        self.task(file, cb);
       }
     });
     async.parallel(Q, function (e, result) {
-      console.log(result)
+      callback(e, result);
     });
   }
 
@@ -337,7 +357,15 @@ class FlexCombo {
     let host = (req.connection.encrypted ? "https" : "http") + "://" + (req.hostname || req.host || req.headers.host);
     // 不用.pathname的原因是由于??combo形式的url，parse方法解析有问题
     let path = urlLib.parse(req.url).path;
-    this.entry(host + path);
+
+    this.entry(host + path, function(e, result) {
+      if (e) {
+        next();
+      }
+      else {
+        console.log(result);
+      }
+    });
 
     this.trace = new Stack("flex-combo");
   }
