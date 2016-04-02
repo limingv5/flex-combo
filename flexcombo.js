@@ -5,6 +5,7 @@ const urlLib  = require("url");
 const fsLib   = require("fs-extra");
 const merge   = require("merge");
 const async   = require("async");
+const fetch   = require("fetch-agent");
 const Stack   = require("plug-trace").stack;
 const Helper  = require("./lib/util");
 
@@ -45,6 +46,11 @@ class FlexCombo {
         fsLib.chmod(this.cacheDir, 0o777);
       }.bind(this));
     }
+
+    // 根目录设置
+    if (!this.param.urls['/']) {
+      this.param.urls['/'] = this.param.rootdir || "src";
+    }
   }
 
   get param() {
@@ -63,7 +69,7 @@ class FlexCombo {
     return merge.recursive({}, require("./lib/param"), confJSON, this.priority);
   }
 
-  addEngine(rule, engine, field) {
+  static addEngine(rule, engine, field) {
     if (!Engines.has(engine)) {
       Engines.set(engine, {
         rule: rule,
@@ -97,21 +103,18 @@ class FlexCombo {
     }
   }
 
-  /**
-   * url分析
-   */
-  parse(_url) {
-    _url = _url.replace(/([^\?])\?[^\?].*$/, "$1").replace(/[\?\,]{1,}$/, '');
-
+  parse(origin) {
+    let _url    = origin.replace(/([^\?])\?[^\?].*$/, "$1").replace(/[\?\,]{1,}$/, '');
     let result  = urlLib.parse(_url);
     result.path = result.path.replace(/[\\|\/]{1,}/g, '/');
 
     this.parseDetail = {
+      url: origin,
+      href: result.protocol + "//" + result.host + result.path,
       protocol: result.protocol,
       host: result.hostname,
       port: result.port || (result.protocol == "https:" ? 443 : 80),
       path: result.path,
-      href: result.protocol + "//" + result.host + result.path,
       list: []
     };
 
@@ -129,6 +132,15 @@ class FlexCombo {
     else {
       this.parseDetail.list = [url];
     }
+  }
+
+  convert(buff, _url) {
+    let outputCharset = (this.param.charset || "utf-8").toLowerCase();
+    if (this.param.urlBasedCharset && _url && this.param.urlBasedCharset[_url]) {
+      outputCharset = this.param.urlBasedCharset[_url];
+    }
+
+    return Helper.getBuffer(buff, outputCharset);
   }
 
   getFilteredUrl(_url) {
@@ -160,7 +172,13 @@ class FlexCombo {
       }
     }
 
-    return pathLib.normalize(pathLib.join(repPath, revPath));
+    let _path = pathLib.normalize(pathLib.join(repPath, revPath));
+    if (pathLib.isAbsolute(_path)) {
+      return _path;
+    }
+    else {
+      return pathLib.join(process.cwd(), _path);
+    }
   }
 
   getCacheFilePath(_url) {
@@ -169,6 +187,16 @@ class FlexCombo {
     }
     else {
       return '';
+    }
+  }
+
+  cacheFile(absPath, buff) {
+    if (absPath && !/[<>\*\?]+/g.test(absPath)) {
+      fsLib.writeFile(absPath, buff, function (e) {
+        if (!e) {
+          fsLib.chmod(absPath, 0o777);
+        }
+      });
     }
   }
 
@@ -196,18 +224,26 @@ class FlexCombo {
   }
 
   _matchEngine(filteredURL, absPath, fakeReqOpt, isNotFirst, engine, info) {
-    let self = this;
-
     if (new RegExp(info.rule).test(filteredURL)) {
+      let self  = this;
+      let param = this.param[info.field] || {};
+      let trace = function (e, isPass) {
+        if (!isPass) {
+          if (e) {
+            self.trace && self.trace.error(absPath, info.field);
+          }
+          else {
+            self.trace && self.trace.engine(info.field, absPath);
+          }
+        }
+      };
+
       if (isNotFirst) {
         return function (content, callback) {
           engine(
-            {content: content}, fakeReqOpt,
-            self.param[info.field] || {},
-            function (e, result) {
-              if (e) {
-                self.trace && self.trace.error(absPath, info.field + " Engine Error");
-              }
+            {content: content}, fakeReqOpt, param,
+            function (e, result, isPass) {
+              trace(e, isPass);
               callback(e, result);
             }
           );
@@ -216,15 +252,9 @@ class FlexCombo {
       else {
         return function (callback) {
           engine(
-            absPath, fakeReqOpt,
-            self.param[info.field] || {},
-            function (e, result) {
-              if (e) {
-                self.trace && self.trace.error(absPath, info.field + " Engine Error");
-              }
-              else {
-                self.trace && self.trace.engine(filteredURL, absPath);
-              }
+            absPath, fakeReqOpt, param,
+            function (e, result, isPass) {
+              trace(e, isPass);
               callback(e, result);
             }
           );
@@ -236,19 +266,16 @@ class FlexCombo {
     }
   }
 
-  engineHandler(_url, cb) {
-    let eUrl = _url;
-    // .css找不到尝试找.less的特殊操作
-    if (!/\.less/.test(_url)) {
-      eUrl = _url.replace(/\.css$/, ".less.css");
-    }
-
-    let filteredURL = this.getFilteredUrl(eUrl);
-    let absPath     = this.getRealPath(filteredURL);
+  engineHandler(pathInfo, cb) {
+    let filteredURL = pathInfo.filtered;
+    let absPath     = pathInfo.abs;
     let fakeReqOpt  = this.buildRequestOption(filteredURL);
 
-    let Q    = [];
-    let self = this;
+    if (fsLib.existsSync(absPath)) {
+      this.trace && this.trace.local(filteredURL, absPath);
+    }
+
+    let Q = [];
     for (let item of this.engines) {
       let engine = this._matchEngine(filteredURL, absPath, fakeReqOpt, Q.length, item[0], item[1]);
       if (engine) {
@@ -268,55 +295,88 @@ class FlexCombo {
           cb(e);
         }
         else {
-          cb(e, result);
+          cb(null, this.convert(result, pathInfo.base));
         }
-      });
+      }.bind(this));
     }
     else {
-      cb({msg: "Engine Pass!"});
+      cb(true);
     }
   }
 
-  staticHandler(file, cb) {
-    let filteredURL = this.getFilteredUrl(file);
-    let absPath = this.getRealPath(filteredURL);
-    let self = this;
+  staticHandler(pathInfo, cb) {
+    let absPath = pathInfo.abs;
+    let self    = this;
 
     fsLib.readFile(absPath, function (e, data) {
       if (e) {
         self.trace && self.trace.warn(absPath, "Not in Local");
+        cb(e);
       }
       else {
-        self.trace && self.trace.local(filteredURL, absPath);
+        cb(null, self.convert(data, pathInfo.base));
+      }
+    });
+  }
+
+  cacheHandler(pathInfo, cb) {
+    let cachePath = pathInfo.cache;
+    let self      = this;
+
+    fsLib.readFile(cachePath, function (e, data) {
+      if (e) {
+        self.trace && self.trace.warn(pathInfo.href, "Not in Cache");
+      }
+      else {
+        self.trace && self.trace.cache(pathInfo.base, cachePath);
       }
 
       cb(e, data);
     });
   }
 
-  cacheHandler(file, cb) {
-    let absPath = this.getCacheFilePath(file);
-    let self = this;
+  fetchHandler(pathInfo, cb) {
+    let self   = this;
+    let reqOpt = this.buildRequestOption(pathInfo.base);
+    fetch.request(reqOpt, function (e, buff, nsres) {
+      let remoteURL = pathInfo.href;
+      if (e) {
+        self.trace && self.trace.error(remoteURL + " Request Error!", "Network 500");
+        cb(e);
+      }
+      else {
+        if (nsres.statusCode == 404) {
+          self.trace && self.trace.error(remoteURL, "Network 404");
 
-    fsLib.readFile(absPath, function (e, data) {
-      self.trace && self.trace.cache(file, absPath);
-      cb(e, data);
+          cb(nsres);
+        }
+        else {
+          self.trace && self.trace.remote(pathInfo.href, reqOpt.host);
+
+          pathInfo.cache && self.cacheFile(pathInfo.cache, buff);
+          cb(null, buff);
+        }
+      }
     });
   }
 
-  remoteHandler(file, cb) {
-    cb(null, file);
-  }
+  task(url, callback) {
+    let filteredURL = this.getFilteredUrl(url);
+    let pathInfo    = {
+      base: url,
+      filtered: filteredURL,
+      abs: this.getRealPath(filteredURL),
+      cache: this.getCacheFilePath(url),
+      href: this.parseDetail.protocol + "//" + this.parseDetail.host + ':' + this.parseDetail.port + url
+    };
 
-  task(file, callback) {
-    let self = this;
-    let step = 0;
-    let taskQueue = [this.engineHandler, this.staticHandler, this.cacheHandler, this.remoteHandler];
-
+    let self      = this;
+    let step      = 0;
+    let taskQueue = [this.engineHandler, this.staticHandler, this.cacheHandler, this.fetchHandler];
     async.doUntil(
       function (cb) {
         if (step < taskQueue.length) {
-          taskQueue[step++].bind(self)(file, function (e, data) {
+          taskQueue[step++].bind(self)(pathInfo, function (e, data) {
             if (e) {
               cb(null, null);
             }
@@ -338,9 +398,10 @@ class FlexCombo {
     );
   }
 
-  entry(url, callback) {
-    this.parse(url);
+  entry(callback) {
     this.resetCustomEngine();
+
+    this.trace && this.trace.request(this.parseDetail.host, this.parseDetail.list);
 
     let self = this;
     let Q    = this.parseDetail.list.map(function (file) {
@@ -349,25 +410,52 @@ class FlexCombo {
       }
     });
     async.parallel(Q, function (e, result) {
+      if (e) {
+        self.trace && self.trace.fail(self.parseDetail.url);
+      }
+      else {
+        self.trace && self.trace.response(self.parseDetail.url, result);
+      }
       callback(e, result);
     });
   }
 
+  stream(absPath, cb) {
+    absPath  = pathLib.resolve(absPath);
+    let _url = absPath.replace(this.param.rootdir, '');
+    // this.engineHandler(_url, function () {
+    //   cb(this.result[_url]);
+    // }.bind(this));
+  }
+
   handle(req, res, next) {
-    let host = (req.connection.encrypted ? "https" : "http") + "://" + (req.hostname || req.host || req.headers.host);
     // 不用.pathname的原因是由于??combo形式的url，parse方法解析有问题
-    let path = urlLib.parse(req.url).path;
+    let URL = (req.connection.encrypted ? "https" : "http") + "://" + (req.hostname || req.host || req.headers.host) + urlLib.parse(req.url).path;
+    this.parse(URL);
+    let absPath = this.getRealPath(this.getFilteredUrl(this.parseDetail.path));
 
-    this.entry(host + path, function(e, result) {
-      if (e) {
-        next();
-      }
-      else {
-        console.log(result);
-      }
-    });
-
-    this.trace = new Stack("flex-combo");
+    if (fsLib.existsSync(absPath) && fsLib.statSync(absPath).isDirectory()) {
+      req.url = urlLib.resolve('/', pathLib.relative(this.param.rootdir, absPath));
+      next();
+    }
+    else {
+      this.trace = new Stack("flex-combo");
+      this.entry(function (e, result) {
+        if (e) {
+          next();
+        }
+        else {
+          let content = Buffer.concat(result);
+          res.writeHead(200, {
+            "Access-Control-Allow-Origin": '*',
+            "Content-Length": content.length,
+            "X-MiddleWare": "flex-combo"
+          });
+          res.write(content);
+          res.end();
+        }
+      });
+    }
   }
 }
 

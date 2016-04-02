@@ -1,19 +1,20 @@
+"use strict";
+
 /**
  * 主入口
  * 通过require("flex-combo")
  * */
-var pathLib = require("path");
-var fsLib = require("fs-extra");
-var DAC = require("dac");
-var trace = require("plug-trace");
-var FlexCombo = require("./flexcombo");
+const pathLib = require("path");
+const trace = require("plug-trace");
+const DAC = require("dac");
+const FlexCombo = require("./flexcombo");
 
-var pkg = require(__dirname + "/package.json");
+const pkg = require(__dirname + "/package.json");
 
-function init_config(dir, key, except) {
+function init_config(dir) {
   if (dir) {
-    var confFile, json = pkg.name + ".json";
-    if (dir.indexOf('/') == 0 || /^\w{1}:[\\/].*$/.test(dir)) {
+    let confFile, json = pkg.name + ".json";
+    if (pathLib.isAbsolute(dir)) {
       if (/\.json$/.test(dir)) {
         confFile = dir;
       }
@@ -25,32 +26,6 @@ function init_config(dir, key, except) {
       confFile = pathLib.join(process.cwd(), dir, json);
     }
 
-    if (fsLib.existsSync(confFile)) {
-      var userParam = require(confFile);
-      delete require.cache[confFile];
-
-      if (key && typeof userParam[key] == "undefined") {
-        var param = require("./lib/param");
-        var keys = Object.keys(param[key]);
-
-        userParam[key] = {};
-        except = except || [];
-
-        keys.map(function (i) {
-          if (except.indexOf(i) == -1 && typeof userParam[i] != "undefined") {
-            userParam[key][i] = userParam[i];
-            delete userParam[i];
-          }
-          else {
-            userParam[key][i] = param[key][i];
-          }
-        });
-
-        fsLib.outputJsonSync(confFile, userParam, {encoding: "utf-8"});
-        fsLib.chmod(confFile, "0777");
-      }
-    }
-
     return confFile;
   }
   else {
@@ -58,25 +33,30 @@ function init_config(dir, key, except) {
   }
 }
 
-// var fcInst = new API();
-// fcInst.addEngine("\\.tpl$|\\.tpl\\.js$|\\.html\\.js$", DAC.tpl, "dac/tpl");
-// fcInst.addEngine("\\.less\\.js$", DAC.lessjs, "dac/tpl");
-// fcInst.addEngine("\\.less$|\\.less\\.css$", DAC.less, "dac/less");
-// fcInst.addEngine("\\.less\\.html$", DAC.lesspolymer, "dac/polymer");
-// fcInst.addEngine("\\.js$", DAC.babel, "dac/babel");
-// fcInst.addEngine("\\.js$", DAC.xmd, "dac/xmd");
+FlexCombo.addEngine("\\.tpl$|\\.tpl\\.js$|\\.html\\.js$", DAC.tpl, "dac/tpl");
+FlexCombo.addEngine("\\.less\\.js$", DAC.lessjs, "dac/tpl");
+FlexCombo.addEngine("\\.less$|\\.less\\.css$", DAC.less, "dac/less");
+FlexCombo.addEngine("\\.less\\.html$", DAC.lesspolymer, "dac/polymer");
+FlexCombo.addEngine("\\.js$", DAC.babel, "dac/babel");
+FlexCombo.addEngine("\\.js$", DAC.xmd, "dac/xmd");
 
-exports = module.exports = function (param, dir) {
-  var confFile = init_config(dir, "dac/tpl", ["filter"]);
-  var fcInst = new FlexCombo(param, confFile);
-
+module.exports = function (param, dir) {
   process.on(pkg.name, function (data) {
     console.log("\n=== Served by %s ===", trace.chalk.white(pkg.name));
     trace(data);
   });
 
+  let confFile = init_config(dir);
+  let rootdir = param.rootdir || "src";
+  if (rootdir.indexOf('/') == 0 || /^\w{1}:[\\/].*$/.test(rootdir)) {
+    param.rootdir = rootdir;
+  }
+  else {
+    param.rootdir = pathLib.normalize(pathLib.join(process.cwd(), rootdir));
+  }
+
   return function () {
-    var req, res, next;
+    let req, res, next;
     switch (arguments.length) {
       case 1:
         req = this.req;
@@ -95,7 +75,8 @@ exports = module.exports = function (param, dir) {
     }
 
     try {
-      if (req && res && !res._header && next) {
+      if (req && res && next) {
+        let fcInst = new FlexCombo(param, confFile);
         fcInst.handle(req, res, next);
       }
       else {
