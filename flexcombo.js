@@ -350,7 +350,9 @@ class FlexCombo {
           else {
             self.trace && self.trace.remote(pathInfo.href, reqOpt.host);
 
-            pathInfo.cache && self.cacheFile(pathInfo.cache, buff);
+            if (self.param.cache && pathInfo.cache) {
+              self.cacheFile(pathInfo.cache, buff);
+            }
             cb(null, buff);
           }
         }
@@ -435,7 +437,8 @@ class FlexCombo {
 
   handle(req, res, next) {
     // 不用.pathname的原因是由于??combo形式的url，parse方法解析有问题
-    let URL = (req.connection.encrypted ? "https" : "http") + "://" + (req.hostname || req.host || req.headers.host) + urlLib.parse(req.url).path;
+    let URL = (req.connection.encrypted ? "https" : "http") + "://" +
+      (req.hostname || req.host || req.headers.host) + urlLib.parse(req.url).path;
     this.parse(URL);
     let absPath = this.getRealPath(this.getFilteredUrl(this.parseDetail.path));
 
