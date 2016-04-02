@@ -11,7 +11,7 @@ const FlexCombo = require("./flexcombo");
 
 const pkg = require(__dirname + "/package.json");
 
-function init_config(dir) {
+let init_config = function(dir) {
   if (dir) {
     let confFile, json = pkg.name + ".json";
     if (pathLib.isAbsolute(dir)) {
@@ -31,22 +31,9 @@ function init_config(dir) {
   else {
     return null;
   }
-}
+};
 
-FlexCombo.addEngine("\\.tpl$|\\.tpl\\.js$|\\.html\\.js$", DAC.tpl, "dac/tpl");
-FlexCombo.addEngine("\\.less\\.js$", DAC.lessjs, "dac/tpl");
-FlexCombo.addEngine("\\.less$|\\.less\\.css$", DAC.less, "dac/less");
-FlexCombo.addEngine("\\.less\\.html$", DAC.lesspolymer, "dac/polymer");
-FlexCombo.addEngine("\\.js$", DAC.babel, "dac/babel");
-FlexCombo.addEngine("\\.js$", DAC.xmd, "dac/xmd");
-
-module.exports = function (param, dir) {
-  process.on(pkg.name, function (data) {
-    console.log("\n=== Served by %s ===", trace.chalk.white(pkg.name));
-    trace(data);
-  });
-
-  let confFile = init_config(dir);
+let init_param = function (param) {
   let rootdir = param.rootdir || "src";
   if (rootdir.indexOf('/') == 0 || /^\w{1}:[\\/].*$/.test(rootdir)) {
     param.rootdir = rootdir;
@@ -54,6 +41,25 @@ module.exports = function (param, dir) {
   else {
     param.rootdir = pathLib.normalize(pathLib.join(process.cwd(), rootdir));
   }
+
+  return param;
+};
+
+FlexCombo.addEngine("\\.tpl$|\\.tpl\\.js$|\\.html\\.js$", DAC.tpl, "dac/tpljs");
+FlexCombo.addEngine("\\.less\\.js$", DAC.lessjs, "dac/lessjs");
+FlexCombo.addEngine("\\.less$|\\.less\\.css$", DAC.less, "dac/less");
+FlexCombo.addEngine("\\.less\\.html$", DAC.lesspolymer, "dac/polymer");
+FlexCombo.addEngine("\\.js$", DAC.babel, "dac/babel");
+FlexCombo.addEngine("\\.js$", DAC.xmd, "dac/xmd");
+
+var exports = module.exports = function (input_param, dir) {
+  process.on(pkg.name, function (data) {
+    console.log("\n=== Served by %s ===", trace.chalk.white(pkg.name));
+    trace(data);
+  });
+
+  let param = init_param(input_param);
+  let confFile = init_config(dir);
 
   return function () {
     let req, res, next;
@@ -89,43 +95,46 @@ module.exports = function (param, dir) {
   }
 };
 
-// exports.API = API;
-// exports.name = pkg.name;
-// exports.config = require("./lib/param");
-// exports.engine = function (param, dir) {
-//   var through = require("through2");
-//   var confFile = init_config(dir, "dac/tpl", ["filter"]);
-//
-//   process
-//     .removeAllListeners(pkg.name)
-//     .on(pkg.name, function (data) {
-//       trace(data, "error");
-//     });
-//
-//   return through.obj(function (file, enc, cb) {
-//     fcInst = new API(param, confFile);
-//
-//     var self = this;
-//
-//     if (file.isNull()) {
-//       self.emit("error", "isNull");
-//       cb(null, file);
-//       return;
-//     }
-//
-//     if (file.isStream()) {
-//       self.emit("error", "Streaming not supported");
-//       cb(null, file);
-//       return;
-//     }
-//
-//     fcInst.stream(file.path, function (buff) {
-//       if (buff) {
-//         file.contents = buff;
-//       }
-//       self.push(file);
-//       cb();
-//     });
-//   });
-// };
-// exports.gulp = exports.engine;
+exports.API = FlexCombo;
+exports.config = require("./lib/param");
+
+
+exports.engine = function (input_param, dir) {
+  let through = require("through2");
+
+  let param = init_param(input_param);
+  let confFile = init_config(dir);
+
+  process
+    .removeAllListeners(pkg.name)
+    .on(pkg.name, function (data) {
+      trace(data, "error");
+    });
+
+  return through.obj(function (file, enc, cb) {
+    let fcInst = new FlexCombo(param, confFile);
+
+    let self = this;
+
+    if (file.isNull()) {
+      self.emit("error", "isNull");
+      cb(null, file);
+      return;
+    }
+
+    if (file.isStream()) {
+      self.emit("error", "Streaming not supported");
+      cb(null, file);
+      return;
+    }
+
+    fcInst.stream(file.path, function (buff) {
+      if (buff) {
+        file.contents = buff;
+      }
+      self.push(file);
+      cb();
+    });
+  });
+};
+exports.gulp = exports.engine;

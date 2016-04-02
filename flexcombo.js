@@ -4,6 +4,7 @@ const pathLib = require("path");
 const urlLib  = require("url");
 const fsLib   = require("fs-extra");
 const merge   = require("merge");
+const mime    = require("mime");
 const async   = require("async");
 const fetch   = require("fetch-agent");
 const Stack   = require("plug-trace").stack;
@@ -66,7 +67,7 @@ class FlexCombo {
       confJSON = {};
     }
 
-    return merge.recursive({}, require("./lib/param"), confJSON, this.priority);
+    return merge.recursive(true, require("./lib/param"), confJSON, this.priority);
   }
 
   static addEngine(rule, engine, field) {
@@ -171,14 +172,8 @@ class FlexCombo {
         revPath         = _url.slice(longestMatchNum);
       }
     }
-
     let _path = pathLib.normalize(pathLib.join(repPath, revPath));
-    if (pathLib.isAbsolute(_path)) {
-      return _path;
-    }
-    else {
-      return pathLib.join(process.cwd(), _path);
-    }
+    return pathLib.isAbsolute(_path) ? _path : pathLib.join(process.cwd(), _path);
   }
 
   getCacheFilePath(_url) {
@@ -200,27 +195,28 @@ class FlexCombo {
     }
   }
 
-  buildRequestOption(url) {
+  buildRequestOption(url, force) {
     let reqHostName = this.parseDetail.host;
-    let reqHostIP   = reqHostName;
-    if (this.param.hosts && this.param.hosts[reqHostName]) {
-      reqHostIP = this.param.hosts[reqHostName];
+    let reqHostIP = this.param.hosts[reqHostName];
+    if (force || reqHostIP) {
+      let requestOption = {
+        protocol: this.parseDetail.protocol,
+        host: reqHostIP || reqHostName,
+        path: encodeURI(url),
+        method: "GET",
+        rejectUnauthorized: false,
+        headers: {
+          "x-broker": "flex-combo",
+          host: reqHostName
+        }
+      };
+
+      requestOption.headers = merge.recursive(true, this.param.headers, requestOption.headers);
+      return requestOption;
     }
-
-    let requestOption = {
-      protocol: this.parseDetail.protocol,
-      host: reqHostIP,
-      path: encodeURI(url),
-      method: "GET",
-      rejectUnauthorized: false,
-      headers: {
-        "x-broker": "flex-combo",
-        host: reqHostName
-      }
-    };
-
-    requestOption.headers = merge.recursive(true, this.param.headers, requestOption.headers);
-    return requestOption;
+    else {
+      return false;
+    }
   }
 
   _matchEngine(filteredURL, absPath, fakeReqOpt, isNotFirst, engine, info) {
@@ -269,7 +265,7 @@ class FlexCombo {
   engineHandler(pathInfo, cb) {
     let filteredURL = pathInfo.filtered;
     let absPath     = pathInfo.abs;
-    let fakeReqOpt  = this.buildRequestOption(filteredURL);
+    let fakeReqOpt  = this.buildRequestOption(filteredURL, true);
 
     if (fsLib.existsSync(absPath)) {
       this.trace && this.trace.local(filteredURL, absPath);
@@ -337,27 +333,33 @@ class FlexCombo {
 
   fetchHandler(pathInfo, cb) {
     let self   = this;
+    let remoteURL = pathInfo.href;
     let reqOpt = this.buildRequestOption(pathInfo.base);
-    fetch.request(reqOpt, function (e, buff, nsres) {
-      let remoteURL = pathInfo.href;
-      if (e) {
-        self.trace && self.trace.error(remoteURL + " Request Error!", "Network 500");
-        cb(e);
-      }
-      else {
-        if (nsres.statusCode == 404) {
-          self.trace && self.trace.error(remoteURL, "Network 404");
-
-          cb(nsres);
+    if (reqOpt) {
+      fetch.request(reqOpt, function (e, buff, nsres) {
+        if (e) {
+          self.trace && self.trace.error(remoteURL + " Request Error!", "Network 500");
+          cb(e);
         }
         else {
-          self.trace && self.trace.remote(pathInfo.href, reqOpt.host);
+          if (nsres.statusCode == 404) {
+            self.trace && self.trace.error(remoteURL, "Network 404");
 
-          pathInfo.cache && self.cacheFile(pathInfo.cache, buff);
-          cb(null, buff);
+            cb(nsres);
+          }
+          else {
+            self.trace && self.trace.remote(pathInfo.href, reqOpt.host);
+
+            pathInfo.cache && self.cacheFile(pathInfo.cache, buff);
+            cb(null, buff);
+          }
         }
-      }
-    });
+      });
+    }
+    else {
+      self.trace && self.trace.error(remoteURL, "Req Loop");
+      cb({msg: "Req Loop!"});
+    }
   }
 
   task(url, callback) {
@@ -421,11 +423,14 @@ class FlexCombo {
   }
 
   stream(absPath, cb) {
-    absPath  = pathLib.resolve(absPath);
-    let _url = absPath.replace(this.param.rootdir, '');
-    // this.engineHandler(_url, function () {
-    //   cb(this.result[_url]);
-    // }.bind(this));
+    let filtered = urlLib.resolve('/', pathLib.relative(this.param.rootdir, absPath));
+    this.engineHandler({
+      base: filtered,
+      filtered: filtered,
+      abs: absPath
+    }, function (e, data) {
+      cb(data);
+    });
   }
 
   handle(req, res, next) {
@@ -446,15 +451,20 @@ class FlexCombo {
         }
         else {
           let content = Buffer.concat(result);
-          res.writeHead(200, {
+          let header = {
             "Access-Control-Allow-Origin": '*',
             "Content-Length": content.length,
             "X-MiddleWare": "flex-combo"
-          });
+          };
+          let sample = this.parseDetail.list[0];
+          if (sample) {
+            header["Content-Type"] = mime.lookup(sample);
+          }
+          res.writeHead(200, header);
           res.write(content);
           res.end();
         }
-      });
+      }.bind(this));
     }
   }
 }

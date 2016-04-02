@@ -19,7 +19,7 @@ process.on("flex-combo", function (data) {
 let confFile = __dirname+"/.config/flex-combo.json";
 let inst = new FlexCombo({rootdir: "./"}, confFile);
 
-inst.parse("https://g.alicdn.com/1.1.1/??index.js,.config/flex-combo.json,engines/xxx.js");
+inst.parse("https://g.alicdn.com/1.1.1/??index.js,.config/flex-combo.json,engines/xxx1.js");
 inst.entry(function (e, result) {
   if (e) {
     console.log(e)
