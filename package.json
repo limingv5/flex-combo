@@ -27,6 +27,13 @@
     "assets",
     "node"
   ],
-  "author": "wayfind",
-  "license": "BSD"
+  "author": {
+    "name": "wayfind",
+    "email": "weifanzhe@qq.com"
+  },
+  "contributors": [{
+    "name": "limingv5",
+    "email": "limingv5@gmail.com"
+  }],
+  "license": "ISC"
 }
