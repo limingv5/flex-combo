@@ -338,7 +338,7 @@ class FlexCombo {
     if (reqOpt) {
       fetch.request(reqOpt, function (e, buff, nsres) {
         if (e) {
-          self.trace && self.trace.error(remoteURL + " Request Error!", "Network 500");
+          self.trace && self.trace.error(remoteURL, "Network 500");
           cb(e);
         }
         else {

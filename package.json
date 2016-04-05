@@ -6,12 +6,12 @@
   "dependencies": {
     "async": "~1.5.2",
     "dac": "~0.9.0",
-    "fetch-agent": "~0.4.1",
+    "fetch-agent": "~0.4.3",
     "fs-extra": "~0.26.7",
     "merge": "~1.2.0",
     "mime": "~1.3.4",
     "plug-trace": "~0.2.0",
-    "through2": "~2.0.0"
+    "through2": "~2.0.1"
   },
   "repository": {
     "type": "git",
