@@ -150,16 +150,13 @@ Options 如下:
     "-min\\.js$": ".js",
     "-min\\.css$": ".css"
   },
-  "dac/tpl": {
-    "define": "KISSY.add",
-    "anonymous": false,
-    "filter": {}
-  },
   "dac/babel": {
     "target": [],
     "options": {}
   },
   "dac/xmd": {
+    "anonymous": false,
+    "filter": {},
     "cmd": [],
     "kmd": []
   },
