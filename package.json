@@ -1,7 +1,7 @@
 {
   "name": "flex-combo",
   "version": "1.0.0",
-  "description": "A combo tool designed for web front-end developer, which support various kinds of combo format by modify configuration(eg. yahoo combo).",
+  "description": "The Assets Handling Middleware for web front-end developer, which support combo format(eg. yahoo combo).",
   "main": "index.js",
   "dependencies": {
     "async": "~1.5.2",
