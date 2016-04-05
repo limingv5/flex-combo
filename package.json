@@ -1,21 +1,17 @@
 {
   "name": "flex-combo",
-  "version": "0.14.2",
-  "description": "A combo tool designed for web front-end developer, which support various kinds of combo format by modify configuration(eg. yahoo combo).",
+  "version": "1.0.0",
+  "description": "The Assets Handling Middleware for web front-end developer, which support combo format(eg. yahoo combo).",
   "main": "index.js",
-  "bin": {
-    "flex-combo": "./bin/flex-combo"
-  },
   "dependencies": {
     "async": "~1.5.2",
-    "commander": "~2.5.0",
-    "dac": "~0.8.3",
-    "fetch-agent": "~0.4.1",
+    "dac": "~0.9.0",
+    "fetch-agent": "~0.4.3",
+    "fs-extra": "~0.26.7",
     "merge": "~1.2.0",
     "mime": "~1.3.4",
-    "mkdirp": "~0.5.1",
-    "plug-trace": "~0.1.5",
-    "through2": "~2.0.0"
+    "plug-trace": "~0.2.0",
+    "through2": "~2.0.1"
   },
   "repository": {
     "type": "git",
@@ -26,9 +22,18 @@
     "js",
     "css",
     "less",
+    "CommonJS",
+    "Babel",
     "assets",
     "node"
   ],
-  "author": "wayfind",
-  "license": "BSD"
+  "author": {
+    "name": "wayfind",
+    "email": "weifanzhe@qq.com"
+  },
+  "contributors": [{
+    "name": "limingv5",
+    "email": "limingv5@gmail.com"
+  }],
+  "license": "ISC"
 }

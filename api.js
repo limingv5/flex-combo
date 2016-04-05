@@ -36,7 +36,7 @@ function FlexCombo(param, confFile) {
 
     if (!fsLib.existsSync(confFile)) {
       fsLib.writeFileSync(confFile, JSON.stringify(this.param, null, 2), {encoding: "utf-8"});
-      fsLib.chmod(confFile, 0777);
+      fsLib.chmod(confFile, "0777");
     }
 
     try {
@@ -70,8 +70,8 @@ function FlexCombo(param, confFile) {
   this.cacheDir = pathLib.join(this.cacheDir, pkgName);
   if (this.param.cache && !fsLib.existsSync(this.cacheDir)) {
     mkdirp(this.cacheDir, function (e, dir) {
-      fsLib.chmod(dir, 0777);
-      fsLib.chmod(this.cacheDir, 0777);
+      fsLib.chmod(dir, "0777");
+      fsLib.chmod(this.cacheDir, "0777");
     }.bind(this));
   }
 }
@@ -446,18 +446,6 @@ FlexCombo.prototype = {
 
         res.write(content);
 
-        // if (
-        //   files.length > 1
-        //   && /[\?&]_sourcemap\b/.test(req.url)
-        //   && isText
-        // ) {
-        //   res.write(require("./lib/sourcemap")(
-        //     this.result,
-        //     files,
-        //     (this.MIME == "application/javascript" ? "js" : "css")
-        //   ));
-        // }
-
         res.end();
         this.trace.response(this.HOST + req.url, content);
       }.bind(this));
@@ -487,7 +475,7 @@ FlexCombo.prototype = {
     if (absPath && !/[<>\*\?]+/g.test(absPath)) {
       fsLib.writeFile(absPath, buff, function (e) {
         if (!e) {
-          fsLib.chmod(absPath, 0777);
+          fsLib.chmod(absPath, "0777");
         }
       });
     }
