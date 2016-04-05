@@ -25,8 +25,8 @@ class FlexCombo {
     this.trace = null;
 
     // 配置相关
-    this.priority = priority || {}; // 代码显示注入的配置项,优先级最高
-    this.confFile = confFile;       // 配置文件地址
+    this.priority = priority; // 代码显示注入的配置项,优先级最高
+    this.confFile = confFile; // 配置文件地址
 
     if (confFile) {
       if (!fsLib.existsSync(confFile)) {
@@ -46,11 +46,6 @@ class FlexCombo {
         fsLib.chmod(dir, 0o777);
         fsLib.chmod(this.cacheDir, 0o777);
       }.bind(this));
-    }
-
-    // 根目录设置
-    if (!this.param.urls['/']) {
-      this.param.urls['/'] = this.param.rootdir || "src";
     }
   }
 
@@ -161,7 +156,12 @@ class FlexCombo {
 
   getRealPath(_url) {
     let map = this.param.urls;
-    _url    = (/^\//.test(_url) ? '' : '/') + _url;
+    // 根目录设置
+    if (!map['/']) {
+      map['/'] = this.param.rootdir || "src";
+    }
+
+    _url = (/^\//.test(_url) ? '' : '/') + _url;
 
     // urls中key对应的实际目录
     let repPath = process.cwd(), revPath = _url, longestMatchNum = 0;
@@ -197,7 +197,7 @@ class FlexCombo {
 
   buildRequestOption(url, force) {
     let reqHostName = this.parseDetail.host;
-    let reqHostIP = this.param.hosts[reqHostName];
+    let reqHostIP   = this.param.hosts[reqHostName];
     if (force || reqHostIP) {
       let requestOption = {
         protocol: this.parseDetail.protocol,
@@ -332,9 +332,9 @@ class FlexCombo {
   }
 
   fetchHandler(pathInfo, cb) {
-    let self   = this;
+    let self      = this;
     let remoteURL = pathInfo.href;
-    let reqOpt = this.buildRequestOption(pathInfo.base);
+    let reqOpt    = this.buildRequestOption(pathInfo.base);
     if (reqOpt) {
       fetch.request(reqOpt, function (e, buff, nsres) {
         if (e) {
@@ -454,12 +454,12 @@ class FlexCombo {
         }
         else {
           let content = Buffer.concat(result);
-          let header = {
+          let header  = {
             "Access-Control-Allow-Origin": '*',
             "Content-Length": content.length,
             "X-MiddleWare": "flex-combo"
           };
-          let sample = this.parseDetail.list[0];
+          let sample  = this.parseDetail.list[0];
           if (sample) {
             header["Content-Type"] = mime.lookup(sample);
           }

@@ -1,4 +1,4 @@
-# Flex Combo 介绍
+# flex-combo 介绍
 
 ## 介绍
 
@@ -8,8 +8,8 @@ Combo技术最初出现源于[《高性能网站建设指南》](http://book.dou
 
 在前端开发环境中，由于最终上线需要将资源引入的代码合并，从而无法在本地轻量开发调试，引起开发调试不便。
 
-`Flex Combo`是在开发环境模拟实现了此功能的服务器，目的是方便前端开发调试。约等于一个支持Combo语法，只能访问js、css、iconfont等静态资源的Web服务器。
-区别于生产环境的Combo，`Flex Combo`专为前端开发环境量身打造，舍弃部分高并发特性，从而提供了丰富的功能和轻量的体积。
+`flex-combo`是在开发环境模拟实现了此功能的服务器，目的是方便前端开发调试。约等于一个支持Combo语法，只能访问js、css、iconfont等静态资源的Web服务器。
+区别于生产环境的Combo，`flex-combo`专为前端开发环境量身打造，舍弃部分高并发特性，从而提供了丰富的功能和轻量的体积。
 
 ## 安装
 
@@ -33,13 +33,13 @@ npm install flex-combo
 127.0.0.1   g.cdn.cn
 ```
 
-然后，在命令行启动`Flex Combo`
+然后，在命令行启动`flex-combo`
 
 ```
 sudo flex-combo
 ```
 
-之后所有向`g.cdn.cn`发起的资源文件请求都将通过`Flex Combo`代理
+之后所有向`g.cdn.cn`发起的资源文件请求都将通过`flex-combo`代理
 
 ## 特性
 
@@ -49,35 +49,35 @@ sudo flex-combo
 
 ![](http://img04.taobaocdn.com/tps/i4/T1d448FndXXXXgVCfH-611-365.png)
 
-`Flex Combo`不但是一个组件库，同时也是一个命令行工具。如果不想写脚本做扩展，可以通过一个命令享受到本地开发调试的好处。
+`flex-combo`不但是一个组件库，同时也是一个命令行工具。如果不想写脚本做扩展，可以通过一个命令享受到本地开发调试的好处。
 
 ### 与线上环境协作
 
-`Flex Combo`会解析请求URL，分析出待处理文件列表。若本地存在对应文件，则读取本地最新内容，否则查询并读取本地缓存，当缓存中也不存在所需资源的情况下，则通过构造请求，向服务器获取线上内容。最终将本地和线上的内容做合并操作并返回。
+`flex-combo`会解析请求URL，分析出待处理文件列表。若本地存在对应文件，则读取本地最新内容，否则查询并读取本地缓存，当缓存中也不存在所需资源的情况下，则通过构造请求，向服务器获取线上内容。最终将本地和线上的内容做合并操作并返回。
 
 ![](http://img04.taobaocdn.com/tps/i4/T1ye85Fg8eXXXhTOTo-570-438.png)
 
 以上机制能够保证调试期和最终上线后的内容顺序完全一致。
 
-* 新版`Flex Combo`还进一步支持了HTTPS资源的代理
+* 新版`flex-combo`还进一步支持了HTTPS资源的代理
 
 ### 灵活易扩展
 
-`Flex Combo`能够以中间件的形式嵌入Connect、Express、Koa等生态系统，与其他中间件一起组合，实现前端开发调试工程化的更多功能。
+`flex-combo`能够以中间件的形式嵌入Connect、Express、Koa等生态系统，与其他中间件一起组合，实现前端开发调试工程化的更多功能。
 
-* 新版`Flex Combo`支持利用defineParser方法完全掌握URL解析逻辑的控制权！
+* 新版`flex-combo`支持利用defineParser方法完全掌握URL解析逻辑的控制权！
 
-* 此外，在新版`Flex Combo`中，利用addEngine方法，还可以添加assets动态编译引擎，例如在`Flex Combo`默认提供的LESS和SASS两种CSS预处理语法编译器之外，还可轻松添加对Stylus等其它类似语法的支持。
+* 此外，在新版`flex-combo`中，利用addEngine方法，还可以添加assets动态编译引擎，例如在`flex-combo`默认提供的LESS和SASS两种CSS预处理语法编译器之外，还可轻松添加对Stylus等其它类似语法的支持。
 
 ### 完全本地开发
 
-所有请求过的线上内容都会被缓存于本地。下次请求将直接从本地缓存获取内容。这个过程对前端开发者来说是透明的。只是会感觉第一次请求资源时稍慢一些。这样，前端开发项目，只需要在项目建成的第一次，向利用`Flex Combo`向线上请求一次资源，后续就再用无需网络，从而实现离线开发。
+所有请求过的线上内容都会被缓存于本地。下次请求将直接从本地缓存获取内容。这个过程对前端开发者来说是透明的。只是会感觉第一次请求资源时稍慢一些。这样，前端开发项目，只需要在项目建成的第一次，向利用`flex-combo`向线上请求一次资源，后续就再用无需网络，从而实现离线开发。
 
 ![](http://img02.taobaocdn.com/tps/i2/T1ohh6FmxcXXX06.PE-714-548.png)
 
 ### 扁平化本地目录及多目录挂接
 
-`Flex Combo`允许把本地目录挂接到任意url上。这个特性让前端在面临/apps/xxxx/yyy/zzz这样深度目录请求时，无需在本地创建同样深度的目录。
+`flex-combo`允许把本地目录挂接到任意url上。这个特性让前端在面临/apps/xxxx/yyy/zzz这样深度目录请求时，无需在本地创建同样深度的目录。
 
 ![](http://img01.taobaocdn.com/tps/i1/T11d47FX0cXXabys_j-669-370.png)
 
@@ -91,7 +91,7 @@ sudo flex-combo
 
 ![](http://img01.taobaocdn.com/tps/i1/T1jn86FllbXXbqNQkk-634-351.png)
 
-`Flex Combo`对这个技术细节做了周详考虑，内部提供了基于内容的编码探测机制。根据文件内容确定编码格式，一旦发现混合编码的情况，就将不符合要求的编码内容，就将起转换为输出编码格式。输出编码格式是可用户自定义的，目前支持UTF8和GBK两种。
+`flex-combo`对这个技术细节做了周详考虑，内部提供了基于内容的编码探测机制。根据文件内容确定编码格式，一旦发现混合编码的情况，就将不符合要求的编码内容，就将起转换为输出编码格式。输出编码格式是可用户自定义的，目前支持UTF8和GBK两种。
 
 
 ## 命令参数
@@ -102,22 +102,12 @@ Options 如下:
 
 ```
 -d, --dir [string]        本地目录，默认为执行命令的当前目录
--u, --url [string]        本地目录映射URL，例如：传入/apps/et本地目录被映射到/apps/et下，这意味着只有当一个请求以/apps/et开头时，才会本地目录中寻找文件，本地目录由dir参数所指定的
--H, --host [string]       服务器域名，如果文件不在本地，将到此域名处请求文件。
--s, --servlet [string]    Combo的servlet，对于Tengine而言是"?",对yahoo而言是"combo"，默认是"?"
--e, --seperator [string]  文件分隔符，默认为","
--c, --charset [string]    http响应数据的编码方式，默认为utf-8
+-c, --config [string]     配置文件所在目录,在其下的配置文件flex-combo.json中可以设置更多`高阶命令参数`
 -p, --http_port [int]     启动HTTP服务的端口，默认为80
 -P, --https_port [int]    启动HTTPS服务的端口，默认为443
 ```
 
-在项目目录下执行`flex-combo`而不带任何参数时，将以项目目录为根目录建立Combo服务器。
-
 ## 高阶命令参数
-
-除了通过命令行设置参数。`Flex Combo`还支持配置文件，配置文件将支持更加丰富的特性。一般来说`Flex Combo`会在第一次运行时生成一份默认配置文件到`~/.flex-combo/config.json`, Windows用户请到自己当前登录用户目录寻找这个文件。该文件以严格的JSON结构保存，编辑时一定要保证格式合法性。`Flex Combo`的参数可以通过命令行、Node.js函数调用参数以及配置文件的三种方式配置。在同时使用三种方式配置参数的情况下，参数的优先级为
-
-* 新版`Flex Combo`支持在全局或项目工程中建立目录，存放配置文件及cache文件
 
 ```
 命令行 > Node.js函数调用参数 > 配置文件
@@ -167,7 +157,7 @@ Options 如下:
 ```
 #### rootdir
 
-`Flex Combo`所代理资源文件的本地映射根目录
+`flex-combo`所代理资源文件的本地映射根目录
 
 #### urls
 
@@ -193,13 +183,13 @@ urls是对象，可以配置多个。如：
 }
 ```
 
-`Flex Combo`将根据**最长匹配**原则，选择最合适规则访问资源文件。上面例子中，如果请求`/xxx/aaa/b.js`,虽然同时符合两项规则，但最终生效规则是字符串最长的那项，也就是`"/xxx/aaa":"/Users/david/yyyproject"`，`/xxx/aaa/b.js`会从`/Users/david/yyyproject"`获取。
+`flex-combo`将根据**最长匹配**原则，选择最合适规则访问资源文件。上面例子中，如果请求`/xxx/aaa/b.js`,虽然同时符合两项规则，但最终生效规则是字符串最长的那项，也就是`"/xxx/aaa":"/Users/david/yyyproject"`，`/xxx/aaa/b.js`会从`/Users/david/yyyproject"`获取。
 
 urls参数对前端开发灵活的在本地支持多个项目有重要意义。在实际项目中，可以灵活运用配置文件全局参数和命令行参数以获取开发便利性。
 
 #### 编码参数
 
-`charset` 设置flex-combo返回数据的编码集。只能设置为`gbk`或者`utf-8`。该设置与源文件编码集无关。`Flex Combo`假设源文件只有`gbk`和`utf-8`两种编码方式。会自动探测源文件是否`utf-8`。因此你可以在一个combo链接中同时引入`utf-8`和`gbk`编码的文件而不会出错。
+`charset` 设置flex-combo返回数据的编码集。只能设置为`gbk`或者`utf-8`。该设置与源文件编码集无关。`flex-combo`假设源文件只有`gbk`和`utf-8`两种编码方式。会自动探测源文件是否`utf-8`。因此你可以在一个combo链接中同时引入`utf-8`和`gbk`编码的文件而不会出错。
 
 `urlBasedCharset` 可针对某一个url设置响应字符集。例如：
 
@@ -213,7 +203,7 @@ urls参数对前端开发灵活的在本地支持多个项目有重要意义。�
 
 #### host相关参数
 
-`Flex Combo`支持当资源不在本地时去线上服务器请求所需资源。host相关参数是定位服务器的关键参数，与host有关的参数有4个。`host`、`hostIp`、`headers`、`hosts`
+`flex-combo`支持当资源不在本地时去线上服务器请求所需资源。host相关参数是定位服务器的关键参数，与host有关的参数有4个。`host`、`hostIp`、`headers`、`hosts`
 
 * 通过IP访问。如果资源服务器没有额外域名。 flex-combo支持以`hostIp`+`headers`的方式定义host。`hostip`必须是一个IP地址。如：`"hostIp": "10.11.23.1"`。一般互联网公司的资源服务器都不支持直接IP访问，必须配置http头。headers定义了向此ip发起http请求时候必须设置的http头信息。http头信息以JSON的方式定义。如：
 
@@ -254,52 +244,37 @@ urls参数对前端开发灵活的在本地支持多个项目有重要意义。�
 
 ## lib开发模式
 
-通过`require("flex-combo/api")`，引入`Flex Combo`的API，其暴露出对象Class，`new`操作创建FlexCombo实例。
-
-* 通过`defineParser`方法自定义URL解析规则
-
-输入参数为URL字符串，通过自定义逻辑的处理，最终输出一个映射地址数组，供接下来获取具体内容。
+通过`require("flex-combo").API`，引入`flex-combo`的API，其暴露出对象Class，`new`操作创建FlexCombo实例。
 
 * 通过`addEngine`方法添加assets动态编译引擎
-
-输入参数1为匹配规则，为正则表达式格式
-
-输入参数2为处理函数，该函数有两个参数，分别是本地绝对路径和请求URL
-
-最终输出动态编译结果，未能编译的则输出null
-
 ```
 var http = require("http");
-var API = require("flex-combo").API;
-
-var fcInst = new API({});
-
-// 自定义URL解析规则
-fcInst.defineParser(function (url) {
-  return [url];
-});
+var FlexCombo = require("flex-combo").API;
 
 // 添加assets动态编译引擎
-// 例如要加入stylus支持，首先要在配置文件supportedFile中加入相应后缀匹配\\.styl$，然后通过addEngine添加动态编译逻辑
-fcInst.addEngine("\\.styl$", function (absPath, url, param, callback) {
-  callback(null, "content", absPath, "MIME");
+// 例如要加入stylus支持，可通过addEngine添加动态编译逻辑
+FlexCombo.addEngine("\\.styl\\.css$", function (absPath, reqOpt, param, callback) {
+  callback(null, "/* css content */");
 });
 
 http
   .createServer(function (req, res) {
+    var fcInst = new FlexCombo({});
     fcInst.handle(req, res, function () {
       res.writeHead(404, {"Content-Type": "text/plain"});
       res.end("Your combo file not found.");
     });
   })
-  .listen(1234);
+  .listen(80, function() {
+    console.log("Started!");
+  });
 ```
 
 ## FAQ 
 1. 为什么会提示`Error: listen EACCES`？
 
-`Flex Combo`使用80端口建立前端服务器，在Linux、Mac下使用80端口需要root权限。解决这个问题的方法是使用`sudo flex-combo [options]`的方式运行。
+`flex-combo`使用80端口建立前端服务器，在Linux、Mac下使用80端口需要root权限。解决这个问题的方法是使用`sudo flex-combo [options]`的方式运行。
 
 2. 为什么会提示`Error: listen EADDRINUSE`？
 
-`Flex Combo`所需要使用的端口正在被使用中，如果这个端口是80端口，你需要检查系统中是否有其他Web容器（如Apache、Nginx等）是否使用了80端口。如果不是，你需要检查是否系统中有其他`Flex Combo`进程正在运行。
+`flex-combo`所需要使用的端口正在被使用中，如果这个端口是80端口，你需要检查系统中是否有其他Web容器（如Apache、Nginx等）是否使用了80端口。如果不是，你需要检查是否系统中有其他`flex-combo`进程正在运行。

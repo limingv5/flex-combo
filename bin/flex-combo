@@ -1,0 +1,31 @@
+#!/usr/bin/env node
+
+var helpInfo  = {
+  dir: ["本地目录。默认情况下是执行命令的当前目录。", "Directory"],
+  config: ["配置目录", "Config Directory"],
+  http_port: ["flex-combo运行HTTP服务的端口号。默认是80", "HTTP Port"],
+  https_port: ["flex-combo运行HTTPS服务的端口号。默认是443", "HTTPS Port"]
+};
+var LANG      = process.env.LANG || "zh";
+var langIndex = (LANG.indexOf("zh") === 0) ? 0 : 1;
+
+var program = require("commander");
+program
+  .version(require(__dirname + "/../package.json").version)
+  .option("-d, --dir [string]", helpInfo.dir[langIndex])
+  .option("-c, --config [string]", helpInfo.config[langIndex])
+  .option("-p, --http_port [string]", helpInfo.http_port[langIndex])
+  .option("-P, --https_port [string]", helpInfo.https_port[langIndex])
+  .parse(process.argv);
+
+var server = require("plug-base").quickStart(program.dir);
+if (program.config) {
+  server.config(program.config.replace(/^~/, process.env.HOME || process.env.USERPROFILE || process.env.HOMEPATH));
+}
+else {
+  server.config(process.env.HOME || process.env.USERPROFILE || process.env.HOMEPATH + "/.flex-combo");
+}
+
+server
+  .plug(require("../index.js"))
+  .listen(program.http_port || 80, program.https_port || 443);

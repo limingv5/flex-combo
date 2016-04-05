@@ -12,7 +12,7 @@ const FlexCombo = require("./flexcombo");
 const pkg = require(__dirname + "/package.json");
 
 let init_config = function(dir) {
-  if (dir) {
+  if (typeof dir == "string" && dir) {
     let confFile, json = pkg.name + ".json";
     if (pathLib.isAbsolute(dir)) {
       if (/\.json$/.test(dir)) {
@@ -29,20 +29,25 @@ let init_config = function(dir) {
     return confFile;
   }
   else {
-    return null;
+    return '';
   }
 };
 
 let init_param = function (param) {
-  let rootdir = param.rootdir || "src";
-  if (rootdir.indexOf('/') == 0 || /^\w{1}:[\\/].*$/.test(rootdir)) {
-    param.rootdir = rootdir;
+  if (typeof param == "object" && param) {
+    let rootdir = param.rootdir || "src";
+    if (rootdir.indexOf('/') == 0 || /^\w{1}:[\\/].*$/.test(rootdir)) {
+      param.rootdir = rootdir;
+    }
+    else {
+      param.rootdir = pathLib.normalize(pathLib.join(process.cwd(), rootdir));
+    }
+
+    return param;
   }
   else {
-    param.rootdir = pathLib.normalize(pathLib.join(process.cwd(), rootdir));
+    return {};
   }
-
-  return param;
 };
 
 FlexCombo.addEngine("\\.tpl$|\\.tpl\\.js$|\\.html\\.js$", DAC.tpl, "dac/tpljs");
