@@ -319,16 +319,21 @@ class FlexCombo {
     let cachePath = pathInfo.cache;
     let self      = this;
 
-    fsLib.readFile(cachePath, function (e, data) {
-      if (e) {
-        self.trace && self.trace.warn(pathInfo.href, "Not in Cache");
-      }
-      else {
-        self.trace && self.trace.cache(pathInfo.base, cachePath);
-      }
+    if (this.param.cache) {
+      fsLib.readFile(cachePath, function (e, data) {
+        if (e) {
+          self.trace && self.trace.warn(pathInfo.href, "Not in Cache");
+        }
+        else {
+          self.trace && self.trace.cache(pathInfo.base, cachePath);
+        }
 
-      cb(e, data);
-    });
+        cb(e, data);
+      });
+    }
+    else {
+      cb(null, null);
+    }
   }
 
   fetchHandler(pathInfo, cb) {

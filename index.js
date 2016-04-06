@@ -8,7 +8,6 @@ const pathLib = require("path");
 const trace = require("plug-trace");
 const DAC = require("dac");
 const FlexCombo = require("./flexcombo");
-
 const pkg = require(__dirname + "/package.json");
 
 let init_config = function(dir) {
@@ -50,7 +49,7 @@ let init_param = function (param) {
   }
 };
 
-FlexCombo.addEngine("\\.tpl$|\\.tpl\\.js$|\\.html\\.js$", DAC.tpl, "dac/tpljs");
+FlexCombo.addEngine("\\.tpl$|\\.tpl\\.js$|\\.html\\.js$", DAC.tpl, "dac/tpl");
 FlexCombo.addEngine("\\.less\\.js$", DAC.lessjs, "dac/lessjs");
 FlexCombo.addEngine("\\.less$|\\.less\\.css$", DAC.less, "dac/less");
 FlexCombo.addEngine("\\.less\\.html$", DAC.lesspolymer, "dac/polymer");
@@ -100,10 +99,6 @@ var exports = module.exports = function (input_param, dir) {
   }
 };
 
-exports.API = FlexCombo;
-exports.config = require("./lib/param");
-
-
 exports.engine = function (input_param, dir) {
   let through = require("through2");
 
@@ -143,3 +138,4 @@ exports.engine = function (input_param, dir) {
   });
 };
 exports.gulp = exports.engine;
+exports.API = FlexCombo;
