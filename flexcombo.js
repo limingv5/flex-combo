@@ -448,7 +448,7 @@ class FlexCombo {
     let absPath = this.getRealPath(this.getFilteredUrl(this.parseDetail.path));
 
     if (fsLib.existsSync(absPath) && fsLib.statSync(absPath).isDirectory()) {
-      req.url = urlLib.resolve('/', pathLib.relative(this.param.rootdir, absPath));
+      req.url = urlLib.resolve('/', pathLib.relative(this.param.rootdir, absPath)) + '/';
       next();
     }
     else {
