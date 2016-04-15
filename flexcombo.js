@@ -448,7 +448,7 @@ class FlexCombo {
     let absPath = this.getRealPath(this.getFilteredUrl(this.parseDetail.path));
 
     if (fsLib.existsSync(absPath) && fsLib.statSync(absPath).isDirectory()) {
-      req.url = urlLib.resolve('/', pathLib.relative(this.param.rootdir, absPath)) + '/';
+      req.url = urlLib.resolve('/', pathLib.relative(this.param.rootdir, absPath));
       next();
     }
     else {
@@ -466,7 +466,11 @@ class FlexCombo {
           };
           let sample  = this.parseDetail.list[0];
           if (sample) {
-            header["Content-Type"] = mime.lookup(sample);
+            let val = mime.lookup(sample);
+            if (/\.js|\.css/.test(sample)) {
+              val += ";charset=" + this.param.charset;
+            }
+            header["Content-Type"] = val;
           }
           res.writeHead(200, header);
           res.write(content);
