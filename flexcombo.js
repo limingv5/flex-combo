@@ -130,8 +130,12 @@ class FlexCombo {
     }
   }
 
+  isText(_url) {
+    return /text|javascript|json/i.test(mime.lookup(_url));
+  }
+
   convert(buff, _url) {
-    if (/\.js$|\.css$/.test(_url) || /text/.test(mime.lookup(_url))) {
+    if (this.isText(_url)) {
       let outputCharset = (this.param.charset || "utf-8").toLowerCase();
       if (this.param.urlBasedCharset && _url && this.param.urlBasedCharset[_url]) {
         outputCharset = this.param.urlBasedCharset[_url];
@@ -470,7 +474,7 @@ class FlexCombo {
           let sample  = this.parseDetail.list[0];
           if (sample) {
             let val = mime.lookup(sample);
-            if (/\.js|\.css/.test(sample)) {
+            if (this.isText(sample)) {
               val += ";charset=" + this.param.charset;
             }
             header["Content-Type"] = val;
