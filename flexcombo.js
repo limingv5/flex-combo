@@ -131,12 +131,15 @@ class FlexCombo {
   }
 
   convert(buff, _url) {
-    let outputCharset = (this.param.charset || "utf-8").toLowerCase();
-    if (this.param.urlBasedCharset && _url && this.param.urlBasedCharset[_url]) {
-      outputCharset = this.param.urlBasedCharset[_url];
-    }
+    if (/\.js$|\.css$/.test(_url) || /text/.test(mime.lookup(_url))) {
+      let outputCharset = (this.param.charset || "utf-8").toLowerCase();
+      if (this.param.urlBasedCharset && _url && this.param.urlBasedCharset[_url]) {
+        outputCharset = this.param.urlBasedCharset[_url];
+      }
 
-    return Helper.getBuffer(buff, outputCharset);
+      return Helper.getBuffer(buff, outputCharset);
+    }
+    return buff;
   }
 
   getFilteredUrl(_url) {
