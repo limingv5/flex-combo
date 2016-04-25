@@ -9,7 +9,7 @@
   "dependencies": {
     "async": "~1.5.2",
     "commander": "~2.9.0",
-    "dac": "~0.9.4",
+    "dac": "~0.10.0",
     "fetch-agent": "~0.4.3",
     "fs-extra": "~0.26.7",
     "merge": "~1.2.0",

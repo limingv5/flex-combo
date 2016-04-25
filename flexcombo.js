@@ -167,7 +167,7 @@ class FlexCombo {
       map['/'] = this.param.rootdir || "src";
     }
 
-    _url = this.getFilteredUrl(_url, this.param['dac/local'].filter);
+    _url = this.getFilteredUrl(_url, this.param["dac/local"].filter);
     _url = (/^\//.test(_url) ? '' : '/') + _url;
 
     // urls中key对应的实际目录
@@ -244,7 +244,7 @@ class FlexCombo {
       if (isNotFirst) {
         return function (content, callback) {
           engine(
-            {content: content}, fakeReqOpt, param,
+            {content: content}, filteredURL, fakeReqOpt, param,
             function (e, result, isPass) {
               trace(e, isPass);
               callback(e, result);
@@ -255,7 +255,7 @@ class FlexCombo {
       else {
         return function (callback) {
           engine(
-            absPath, fakeReqOpt, param,
+            absPath, filteredURL, fakeReqOpt, param,
             function (e, result, isPass) {
               trace(e, isPass);
               callback(e, result);
@@ -272,7 +272,7 @@ class FlexCombo {
   engineHandler(pathInfo, cb) {
     let filteredURL = pathInfo.filtered;
     let absPath     = pathInfo.abs;
-    let fakeReqOpt  = this.buildRequestOption(filteredURL, true);
+    let fakeReqOpt  = this.buildRequestOption(pathInfo.base, true);
 
     if (fsLib.existsSync(absPath)) {
       this.trace && this.trace.local(filteredURL, absPath);
