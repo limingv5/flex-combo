@@ -146,8 +146,7 @@ class FlexCombo {
     return buff;
   }
 
-  getFilteredUrl(_url) {
-    let filter = this.param.filter;
+  getFilteredUrl(_url, filter) {
     let regx, ori_url;
 
     for (let k in filter) {
@@ -168,6 +167,7 @@ class FlexCombo {
       map['/'] = this.param.rootdir || "src";
     }
 
+    _url = this.getFilteredUrl(_url, this.param['dac/local'].filter);
     _url = (/^\//.test(_url) ? '' : '/') + _url;
 
     // urls中key对应的实际目录
@@ -377,7 +377,7 @@ class FlexCombo {
   }
 
   task(url, callback) {
-    let filteredURL = this.getFilteredUrl(url);
+    let filteredURL = this.getFilteredUrl(url, this.param.filter);
     let pathInfo    = {
       base: url,
       filtered: filteredURL,
@@ -452,7 +452,7 @@ class FlexCombo {
     let URL = (req.connection.encrypted ? "https" : "http") + "://" +
       (req.hostname || req.host || req.headers.host) + urlLib.parse(req.url).path;
     this.parse(URL);
-    let absPath = this.getRealPath(this.getFilteredUrl(this.parseDetail.path));
+    let absPath = this.getRealPath(this.getFilteredUrl(this.parseDetail.path, this.param.filter));
 
     if (fsLib.existsSync(absPath) && fsLib.statSync(absPath).isDirectory()) {
       req.url = urlLib.resolve('/', pathLib.relative(this.param.rootdir, absPath));
