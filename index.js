@@ -57,7 +57,7 @@ FlexCombo.addEngine("\\.less\\.html$", DAC.lesspolymer, "dac/polymer");
 FlexCombo.addEngine("\\.js$", DAC.babel, "dac/babel");
 FlexCombo.addEngine("\\.js$", DAC.xmd, "dac/xmd");
 
-var exports = module.exports = function (input_param, dir) {
+module.exports = function (input_param, dir) {
   process.on(pkg.name, function (data) {
     console.log("\n=== Served by %s ===", trace.chalk.white(pkg.name));
     trace(data);
@@ -100,7 +100,7 @@ var exports = module.exports = function (input_param, dir) {
   }
 };
 
-exports.engine = function (input_param, dir) {
+module.exports.gulp = module.exports.engine = function (input_param, dir) {
   let through = require("through2");
 
   let param = init_param(input_param);
@@ -138,5 +138,4 @@ exports.engine = function (input_param, dir) {
     });
   });
 };
-exports.gulp = exports.engine;
-exports.API = FlexCombo;
+module.exports.API = FlexCombo;

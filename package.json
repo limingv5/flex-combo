@@ -1,6 +1,6 @@
 {
   "name": "flex-combo",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "The Assets Handling Middleware for web front-end developer, which support combo format(eg. yahoo combo).",
   "main": "index.js",
   "bin": {
