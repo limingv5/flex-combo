@@ -66,32 +66,14 @@ module.exports = function (input_param, dir) {
   let param = init_param(input_param);
   let confFile = init_config(dir);
 
-  return function () {
-    let req, res, next;
-    switch (arguments.length) {
-      case 1:
-        req = this.req;
-        res = this.res;
-        next = arguments[0];
-        break;
-      case 3:
-        req = arguments[0];
-        res = arguments[1];
-        next = arguments[2];
-        break;
-      default:
-        next = function () {
-          console.log("Unknown Web Container!");
-        };
-    }
-
+  return function (req, res, next) {
     try {
       if (req && res && next) {
         let fcInst = new FlexCombo(param, confFile);
         fcInst.handle(req, res, next);
       }
       else {
-        next();
+        console.log("arguments error!");
       }
     }
     catch (e) {
