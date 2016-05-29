@@ -82,6 +82,19 @@ module.exports = function (input_param, dir) {
   }
 };
 
+module.exports.koa = function (ctx, param, cb) {
+  let fcInst = new FlexCombo(param);
+  fcInst.koa(ctx.req, function (e, body, header) {
+    if (e) {
+      cb(e);
+    }
+    else {
+      ctx.set(header);
+      cb(null, body);
+    }
+  });
+};
+
 module.exports.gulp = module.exports.engine = function (input_param, dir) {
   let through = require("through2");
 

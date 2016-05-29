@@ -447,7 +447,7 @@ class FlexCombo {
     });
   }
 
-  handle(req, res, next) {
+  response(req, cb) {
     // 不用.pathname的原因是由于??combo形式的url，parse方法解析有问题
     let URL = (req.connection.encrypted ? "https" : "http") + "://" +
       (req.hostname || req.host || req.headers.host) + urlLib.parse(req.url).path;
@@ -456,13 +456,14 @@ class FlexCombo {
 
     if (fsLib.existsSync(absPath) && fsLib.statSync(absPath).isDirectory()) {
       req.url = urlLib.resolve('/', pathLib.relative(this.param.rootdir, absPath));
-      next();
+      cb({msg: "isDirectory"});
     }
     else {
       this.trace = new Stack("flex-combo");
+
       this.entry(function (e, result) {
         if (e) {
-          next();
+          cb(e);
         }
         else {
           let content = Buffer.concat(result);
@@ -479,12 +480,34 @@ class FlexCombo {
             }
             header["Content-Type"] = val;
           }
-          res.writeHead(200, header);
-          res.write(content);
-          res.end();
+          cb(null, content, header);
         }
       }.bind(this));
     }
+  }
+
+  handle(req, res, next) {
+    this.response(req, function (e, content, header) {
+      if (e) {
+        next();
+      }
+      else {
+        res.writeHead(200, header);
+        res.write(content);
+        res.end();
+      }
+    });
+  }
+
+  koa(req, cb) {
+    this.response(req, function (e, content, header) {
+      if (e) {
+        cb(e);
+      }
+      else {
+        cb(null, content, header);
+      }
+    });
   }
 }
 
