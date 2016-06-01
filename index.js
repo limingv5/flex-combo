@@ -49,18 +49,7 @@ let init_param = function (param) {
   }
 };
 
-FlexCombo.addEngine("\\.tpl$|\\.tpl\\.js$", DAC.tpl, "dac/tpl");
-FlexCombo.addEngine("\\.html\\.js$", function (htmlfile, filteredUrl, reqOpt, args, cb) {
-  var fsLib = require("fs");
-  DAC.tpl(htmlfile, filteredUrl, reqOpt, args, function (err, result) {
-    if (typeof result != "undefined") {
-      fsLib.writeFile(htmlfile, result, function () {
-        fsLib.chmod(htmlfile, "0777");
-      });
-    }
-    cb(err, result || '');
-  });
-}, "dac/tpl");
+FlexCombo.addEngine("\\.tpl$|\\.tpl\\.js$|\\.html\\.js$", DAC.tpl, "dac/tpl");
 FlexCombo.addEngine("\\.swig$|\\.swig\\.js$", DAC.swig, "dac/tpl");
 FlexCombo.addEngine("\\.less\\.js$", DAC.lessjs, "dac/lessjs");
 FlexCombo.addEngine("\\.less$|\\.less\\.css$", DAC.less, "dac/less");
