@@ -298,11 +298,6 @@ class FlexCombo {
           cb(e);
         }
         else {
-          if (/\.html\.js$/.test(pathInfo.base)) {
-            fsLib.writeFile(absPath, result, function () {
-              fsLib.chmod(absPath, "0777");
-            });
-          }
           cb(null, this.convert(result, pathInfo.base));
         }
       }.bind(this));
@@ -402,6 +397,11 @@ class FlexCombo {
               cb(null, null);
             }
             else {
+              if (step === 1 && /\.html\.js$/.test(pathInfo.base)) {
+                fsLib.writeFile(pathInfo.abs, data, function () {
+                  fsLib.chmod(pathInfo.abs, "0777");
+                });
+              }
               cb(null, data);
             }
           });
@@ -459,10 +459,7 @@ class FlexCombo {
     this.parse(URL);
     let absPath = this.getRealPath(this.getFilteredUrl(this.parseDetail.path, this.param.filter));
 
-    if (absPath.indexOf(this.param.servlet + '?') == -1 &&
-      fsLib.existsSync(absPath) &&
-      fsLib.statSync(absPath).isDirectory()
-    ) {
+    if (fsLib.existsSync(absPath) && fsLib.statSync(absPath).isDirectory()) {
       req.url = urlLib.resolve('/', pathLib.relative(this.param.rootdir, absPath));
       cb({msg: "isDirectory"});
     }
