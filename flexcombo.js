@@ -62,7 +62,7 @@ class FlexCombo {
       confJSON = {};
     }
 
-    return merge.recursive(true, require("./lib/param"), confJSON, this.priority);
+    return merge.recursive(true, require("./lib/param"), confJSON, this.priority, {hosts: confJSON.hosts || {}});
   }
 
   static addEngine(rule, engine, field) {
