@@ -43,7 +43,7 @@ class FlexCombo {
     this.cacheDir = pathLib.join(this.cacheDir, "flex-combo");
     if (!fsLib.existsSync(this.cacheDir)) {
       fsLib.mkdirs(this.cacheDir, function (e, dir) {
-        fsLib.chmod(dir, 0o777);
+        dir && fsLib.chmod(dir, 0o777);
         fsLib.chmod(this.cacheDir, 0o777);
       }.bind(this));
     }
