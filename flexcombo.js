@@ -233,7 +233,9 @@ class FlexCombo {
       let trace = function (e, isPass) {
         if (!isPass) {
           if (e) {
-            self.trace && self.trace.error(absPath, info.field);
+            if (e.code != -1) {
+              self.trace && self.trace.error(absPath, info.field);
+            }
           }
           else {
             self.trace && self.trace.engine(info.field, absPath);
